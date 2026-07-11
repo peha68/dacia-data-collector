@@ -1,0 +1,10 @@
+{
+  "source": "https://github.com/hacf-fr/renault-api",
+  "sourceFile": "https://raw.githubusercontent.com/hacf-fr/renault-api/main/src/renault_api/const.py",
+  "region": "EU",
+  "gigyaApiKey": "3_VgdkgtIRH3AdHvJm-cjV2ug2EFE0lxt0IJzMC4MFqZjFpn_GYFXVdNZ19L7wZX0N",
+  "kamereonApiKey": "YjkKtHmGfaceeuExUDKGxrLZGGvtVS0J",
+  "gigyaTarget": "https://accounts.eu1.gigya.com",
+  "kamereonTarget": "https://api-wired-prod-1-euw1.wrd-aws.com",
+  "updatedAt": "2026-07-11T00:00:00.000Z"
+}
