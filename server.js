@@ -1219,6 +1219,32 @@ async function getVehicleStatus() {
     };
 }
 
+
+app.get('/api/vehicle-details', async (req, res) => {
+    try {
+        const session = await createSession();
+
+        const result = await getVehiclesForAccount(
+            session.accountId,
+            session.jwtToken
+        );
+
+        res.status(result.response.status).json({
+            success: result.response.ok,
+            status: result.response.status,
+            accountType: session.accountType,
+            vehicle: session.vehicle,
+            data: result.data
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+
 // ============================================================================
 // HTML
 // ============================================================================
@@ -1251,164 +1277,156 @@ function renderRow(
     `;
 }
 
-function pageTemplate(content) {
+function pageTemplate(content, title = 'Dacia Data Collector') {
     return `
         <!DOCTYPE html>
-
         <html lang="pl">
-
         <head>
             <meta charset="UTF-8">
-
-            <meta
-                name="viewport"
-                content="width=device-width, initial-scale=1.0"
-            >
-
-            <title>Dacia Bigster</title>
-
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>${escapeHtml(title)}</title>
             <style>
-                * {
-                    box-sizing: border-box;
-                }
-
+                * { box-sizing: border-box; }
                 body {
                     margin: 0;
-                    padding: 24px;
-
-                    background: #f2f4f5;
-                    color: #26333d;
-
-                    font-family:
-                        -apple-system,
-                        BlinkMacSystemFont,
-                        "Segoe UI",
-                        Roboto,
-                        Arial,
-                        sans-serif;
+                    background: #eef1f3;
+                    color: #24313a;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
                 }
-
-                .card {
-                    width: 100%;
-                    max-width: 650px;
-
-                    margin: 24px auto;
-                    padding: 28px;
-
-                    background: white;
-                    border-radius: 18px;
-
-                    box-shadow:
-                        0 8px 32px
-                        rgba(0, 0, 0, 0.08);
+                .topbar {
+                    position: sticky; top: 0; z-index: 10;
+                    background: rgba(255,255,255,.96);
+                    border-bottom: 1px solid #dfe5e8;
+                    backdrop-filter: blur(10px);
                 }
-
-                h1 {
-                    margin: 0 0 6px;
+                .topbar-inner {
+                    max-width: 1180px; margin: 0 auto; padding: 13px 22px;
+                    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
                 }
-
-                h2 {
-                    margin: 28px 0 8px;
-                    font-size: 18px;
+                .brand { font-weight: 800; margin-right: auto; color: #1d2a32; }
+                .nav-link {
+                    display: inline-block; padding: 9px 12px; border-radius: 9px;
+                    text-decoration: none; color: #41515c; font-size: 14px; font-weight: 650;
                 }
-
-                .subtitle {
-                    margin-bottom: 20px;
-                    color: #77838c;
-                    font-size: 13px;
+                .nav-link:hover { background: #edf2f4; }
+                main { max-width: 1180px; margin: 0 auto; padding: 25px 22px 44px; }
+                .hero, .card {
+                    background: white; border-radius: 18px;
+                    box-shadow: 0 8px 28px rgba(0,0,0,.065);
+                    border: 1px solid #e7ecef;
                 }
-
+                .hero { padding: 26px; margin-bottom: 20px; }
+                .card { padding: 22px; }
+                .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+                .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+                .metric { padding: 18px; background: #f7f9fa; border-radius: 14px; }
+                .metric-label { color: #75838c; font-size: 13px; }
+                .metric-value { margin-top: 6px; font-size: 23px; font-weight: 800; }
+                h1 { margin: 0 0 7px; font-size: clamp(27px, 4vw, 42px); }
+                h2 { margin: 0 0 14px; font-size: 20px; }
+                h3 { margin: 20px 0 10px; font-size: 16px; }
+                .subtitle, .muted { color: #71808a; }
                 .row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-
-                    gap: 20px;
-                    padding: 13px 0;
-
-                    border-bottom:
-                        1px solid #eeeeee;
+                    display: flex; justify-content: space-between; align-items: flex-start;
+                    gap: 22px; padding: 12px 0; border-bottom: 1px solid #edf0f1;
                 }
-
-                .label {
-                    color: #71808b;
+                .row:last-child { border-bottom: 0; }
+                .label { color: #71808b; }
+                .value { max-width: 68%; text-align: right; font-weight: 700; overflow-wrap: anywhere; }
+                .note { display: block; margin-top: 4px; color: #8a959c; font-size: 11px; font-weight: 400; }
+                .warning, .info {
+                    margin-top: 16px; padding: 13px 15px; border-radius: 11px;
+                    font-size: 13px; line-height: 1.55;
                 }
-
-                .value {
-                    max-width: 65%;
-                    text-align: right;
-                    font-weight: 700;
-                }
-
-                .note {
-                    display: block;
-                    margin-top: 4px;
-
-                    color: #89949c;
-                    font-size: 11px;
-                    font-weight: 400;
-                }
-
-                .warning {
-                    margin-top: 18px;
-                    padding: 12px;
-
-                    border-radius: 9px;
-                    background: #fff7df;
-                    color: #755c14;
-
-                    font-size: 13px;
-                    line-height: 1.5;
-                }
-
-                .contract {
-                    padding: 10px 0;
-                    border-bottom:
-                        1px solid #eeeeee;
-
-                    font-size: 14px;
-                }
-
-                .buttons {
-                    margin-top: 22px;
-                }
-
+                .warning { background: #fff6d9; color: #705a18; }
+                .info { background: #eaf4ff; color: #234e73; }
                 .button {
-                    display: inline-block;
-
-                    margin: 6px 6px 0 0;
-                    padding: 11px 16px;
-
-                    border-radius: 9px;
-                    background: #2d7847;
-                    color: white;
-
-                    text-decoration: none;
-                    font-weight: 700;
+                    display: inline-block; margin: 7px 7px 0 0; padding: 11px 15px;
+                    border-radius: 9px; background: #2d7847; color: white;
+                    text-decoration: none; font-weight: 750; border: 0; cursor: pointer;
                 }
-
-                .button.secondary {
-                    background: #34495e;
-                }
-
-                .error {
-                    color: #c0392b;
-                }
-
-                a {
-                    color: #1768a9;
+                .button.secondary { background: #43545f; }
+                .button.light { background: #edf2f4; color: #33434d; }
+                .car-image { width: 100%; max-height: 460px; object-fit: contain; display: block; }
+                .gallery { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; }
+                .gallery figure { margin: 0; background: white; border: 1px solid #e5eaed; border-radius: 15px; overflow: hidden; }
+                .gallery img { width: 100%; min-height: 240px; object-fit: contain; background: #f5f7f8; display: block; }
+                .gallery figcaption { padding: 12px 14px; font-size: 13px; color: #596972; }
+                .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+                .chip { background: #edf2f4; border-radius: 999px; padding: 7px 10px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+                .contract { padding: 12px 0; border-bottom: 1px solid #edf0f1; }
+                .error { color: #bd3328; }
+                a { color: #1768a9; }
+                code { overflow-wrap: anywhere; }
+                @media (max-width: 760px) {
+                    .grid, .grid-3, .gallery { grid-template-columns: 1fr; }
+                    .topbar-inner { padding: 10px 14px; }
+                    main { padding: 16px 13px 36px; }
+                    .hero, .card { border-radius: 14px; padding: 18px; }
+                    .value { max-width: 58%; }
+                    .gallery img { min-height: 180px; }
                 }
             </style>
         </head>
-
         <body>
-            <div class="card">
-                ${content}
-            </div>
+            <header class="topbar">
+                <nav class="topbar-inner">
+                    <a class="brand" href="/">Dacia Data Collector</a>
+                    <a class="nav-link" href="/">Przegląd</a>
+                    <a class="nav-link" href="/vehicle">Dane auta</a>
+                    <a class="nav-link" href="/vehicle/images">Galeria</a>
+                    <a class="nav-link" href="/vehicle/equipment">Wyposażenie</a>
+                    <a class="nav-link" href="/vehicle/services">Usługi</a>
+                    <a class="nav-link" href="/debug">API</a>
+                </nav>
+            </header>
+            <main>${content}</main>
         </body>
-
         </html>
     `;
+}
+
+function getVehicleDetailsFromSession(session) {
+    return session?.vehicle?.vehicleDetails || {};
+}
+
+function getVehicleImages(details) {
+    const assets = Array.isArray(details?.assets) ? details.assets : [];
+    const images = [];
+
+    for (const asset of assets) {
+        const renditions = Array.isArray(asset?.renditions) ? asset.renditions : [];
+        const large = renditions.find((item) => item?.resolutionType === 'ONE_MYRENAULT_LARGE');
+        const small = renditions.find((item) => item?.resolutionType === 'ONE_MYRENAULT_SMALL');
+        const url = large?.url || small?.url;
+
+        if (url && !images.some((item) => item.url === url)) {
+            images.push({
+                viewpoint: asset.viewpoint || 'widok',
+                url,
+                smallUrl: small?.url || url,
+                largeUrl: large?.url || url
+            });
+        }
+    }
+
+    return images;
+}
+
+function getPreferredVehicleImage(details) {
+    const images = getVehicleImages(details);
+    return (
+        images.find((item) => item.viewpoint === 'myb_car_page_dashboard') ||
+        images.find((item) => item.viewpoint === 'myb_car_selector') ||
+        images[0] ||
+        null
+    );
+}
+
+function getVcdCodes(details) {
+    return typeof details?.vcd === 'string'
+        ? details.vcd.split('/').map((code) => code.trim()).filter(Boolean)
+        : [];
 }
 
 // ============================================================================
@@ -1417,303 +1435,238 @@ function pageTemplate(content) {
 
 app.get('/', async (req, res) => {
     try {
-        console.log('');
-        console.log(
-            '=========================================='
-        );
-        console.log(
-            'Pobieram dane Dacia Bigster...'
-        );
-        console.log(
-            '=========================================='
-        );
+        const status = await getVehicleStatus();
+        const { session, cockpit, location, pressure, contracts } = status;
+        const details = getVehicleDetailsFromSession(session);
+        const image = getPreferredVehicleImage(details);
+        const mapLink = location.latitude !== null && location.longitude !== null
+            ? `https://www.google.com/maps?q=${encodeURIComponent(location.latitude)},${encodeURIComponent(location.longitude)}`
+            : null;
 
-        const status =
-            await getVehicleStatus();
+        const activeContracts = contracts.filter((contract) => contract.status === 'ACTIVE');
 
-        const {
-            session,
-            cockpit,
-            location,
-            pressure,
-            contracts
-        } = status;
-
-        const mapLink =
-            location.latitude !== null &&
-            location.longitude !== null
-                ? (
-                    `https://www.google.com/maps?q=` +
-                    `${encodeURIComponent(location.latitude)},` +
-                    `${encodeURIComponent(location.longitude)}`
-                )
-                : null;
-
-        const warranties =
-            contracts.filter(
-                (contract) =>
-                    contract.status === 'ACTIVE' &&
-                    contract.type === 'WARRANTY'
-            );
-
-        let pressureHtml = '';
-
-        if (pressure.available) {
-            pressureHtml = `
-                <h2>Ciśnienie opon</h2>
-
-                ${renderRow(
-                    'Przód lewy',
-                    pressure.frontLeft !== null
-                        ? `${formatNumber(
-                            pressure.frontLeft,
-                            2
-                        )} bar`
-                        : 'Brak danych'
-                )}
-
-                ${renderRow(
-                    'Przód prawy',
-                    pressure.frontRight !== null
-                        ? `${formatNumber(
-                            pressure.frontRight,
-                            2
-                        )} bar`
-                        : 'Brak danych'
-                )}
-
-                ${renderRow(
-                    'Tył lewy',
-                    pressure.rearLeft !== null
-                        ? `${formatNumber(
-                            pressure.rearLeft,
-                            2
-                        )} bar`
-                        : 'Brak danych'
-                )}
-
-                ${renderRow(
-                    'Tył prawy',
-                    pressure.rearRight !== null
-                        ? `${formatNumber(
-                            pressure.rearRight,
-                            2
-                        )} bar`
-                        : 'Brak danych'
-                )}
-            `;
-        } else {
-            pressureHtml = `
-                <h2>Ciśnienie opon</h2>
-
-                <div class="warning">
-                    Endpoint pressure nie zwrócił danych.
-                    Status HTTP:
-                    ${escapeHtml(
-                        pressure.status ?? 'brak'
-                    )}.
+        res.status(200).send(pageTemplate(`
+            <section class="hero">
+                <div class="grid">
+                    <div>
+                        <div class="subtitle">${escapeHtml(details.brand?.label || 'DACIA')}</div>
+                        <h1>${escapeHtml(details.model?.label || 'Twój samochód')}</h1>
+                        <p class="muted">
+                            ${escapeHtml(details.hybridation?.label || details.energy?.label || '')}
+                            ${details.gearbox?.label ? ` · ${escapeHtml(details.gearbox.label)}` : ''}
+                        </p>
+                        <div>
+                            <a class="button" href="/vehicle">Pełne dane auta</a>
+                            <a class="button secondary" href="/vehicle/images">Zdjęcia</a>
+                            ${mapLink ? `<a class="button light" target="_blank" rel="noopener noreferrer" href="${mapLink}">Mapa</a>` : ''}
+                        </div>
+                    </div>
+                    <div>
+                        ${image ? `<img class="car-image" src="${escapeHtml(image.largeUrl)}" alt="${escapeHtml(details.model?.label || 'Samochód')}">` : '<div class="info">Brak grafiki pojazdu.</div>'}
+                    </div>
                 </div>
-            `;
-        }
+            </section>
 
-        const warrantiesHtml =
-            warranties.length > 0
-                ? `
-                    <h2>Aktywne gwarancje</h2>
-
-                    ${warranties
-                        .map(
-                            (contract) => `
-                                <div class="contract">
-                                    <strong>
-                                        ${escapeHtml(
-                                            contract.description
-                                        )}
-                                    </strong>
-
-                                    ${
-                                        contract.endDate
-                                            ? `
-                                                <br>
-                                                do:
-                                                ${escapeHtml(
-                                                    contract.endDate
-                                                )}
-                                            `
-                                            : ''
-                                    }
-                                </div>
-                            `
-                        )
-                        .join('')}
-                `
-                : '';
-
-        res.status(200).send(
-            pageTemplate(`
-                <h1>Dacia Bigster</h1>
-
-                <div class="subtitle">
-                    VIN:
-                    ${escapeHtml(CAR_VIN)}
-                    · konto:
-                    ${escapeHtml(session.accountType)}
-                    · cockpit v${cockpit.cockpitVersion}
+            <section class="grid-3">
+                <div class="metric">
+                    <div class="metric-label">Przebieg</div>
+                    <div class="metric-value">${cockpit.mileage !== null ? `${formatNumber(cockpit.mileage, 0)} km` : 'Brak danych'}</div>
                 </div>
-
-                ${renderRow(
-                    'Przebieg',
-                    cockpit.mileage !== null
-                        ? `${formatNumber(
-                            cockpit.mileage,
-                            0
-                        )} km`
-                        : 'Brak danych'
-                )}
-
-                ${renderRow(
-                    'Paliwo raportowane przez auto',
-                    cockpit.fuelQuantity !== null
-                        ? `${formatNumber(
-                            cockpit.fuelQuantity
-                        )} l`
-                        : 'Brak danych',
-
-                    'API nie określa, czy jest to benzyna, czy LPG'
-                )}
-
-                ${
-                    cockpit.fuelAutonomy !== null
-                        ? renderRow(
-                            'Zasięg raportowany przez auto',
-                            `${formatNumber(
-                                cockpit.fuelAutonomy,
-                                0
-                            )} km`
-                        )
-                        : ''
-                }
-
-                ${renderRow(
-                    'Zasięg, jeśli wartość oznacza benzynę',
-                    cockpit.estimatedPetrolRange !== null
-                        ? `około ${formatNumber(
-                            cockpit.estimatedPetrolRange,
-                            0
-                        )} km`
-                        : 'Brak danych',
-
-                    `szacunek przy ${PETROL_CONSUMPTION} l/100 km`
-                )}
-
-                ${renderRow(
-                    'Zasięg, jeśli wartość oznacza LPG',
-                    cockpit.estimatedLpgRange !== null
-                        ? `około ${formatNumber(
-                            cockpit.estimatedLpgRange,
-                            0
-                        )} km`
-                        : 'Brak danych',
-
-                    `szacunek przy ${LPG_CONSUMPTION} l/100 km`
-                )}
-
-                ${renderRow(
-                    'Aktualizacja danych',
-                    escapeHtml(
-                        formatWarsawDate(
-                            cockpit.timestamp
-                        )
-                    )
-                )}
-
-                ${renderRow(
-                    'Lokalizacja',
-                    mapLink
-                        ? `
-                            <a
-                                href="${mapLink}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                Pokaż na mapie
-                            </a>
-                        `
-                        : 'Brak danych',
-
-                    location.timestamp
-                        ? formatWarsawDate(
-                            location.timestamp
-                        )
-                        : null
-                )}
-
-                <div class="warning">
-                    Renault API zwraca obecnie tylko jedno pole
-                    <strong>fuelQuantity</strong>.
-                    Nie ma osobnych wartości dla benzyny i LPG,
-                    dlatego aplikacja nie przypisuje tej ilości
-                    do konkretnego zbiornika.
+                <div class="metric">
+                    <div class="metric-label">Paliwo raportowane</div>
+                    <div class="metric-value">${cockpit.fuelQuantity !== null ? `${formatNumber(cockpit.fuelQuantity)} l` : 'Brak danych'}</div>
                 </div>
-
-                ${pressureHtml}
-
-                ${warrantiesHtml}
-
-                <div class="buttons">
-                    <a
-                        class="button"
-                        href="/"
-                    >
-                        Odśwież
-                    </a>
-
-                    <a
-                        class="button secondary"
-                        href="/api/status"
-                    >
-                        Status JSON
-                    </a>
-
-                    <a
-                        class="button secondary"
-                        href="/api/raw/cockpit"
-                    >
-                        Surowy cockpit
-                    </a>
-
-                    <a
-                        class="button secondary"
-                        href="/api/pressure"
-                    >
-                        Pressure JSON
-                    </a>
+                <div class="metric">
+                    <div class="metric-label">Zasięg raportowany</div>
+                    <div class="metric-value">${cockpit.fuelAutonomy !== null ? `${formatNumber(cockpit.fuelAutonomy, 0)} km` : 'Brak danych'}</div>
                 </div>
-            `)
-        );
+            </section>
+
+            <section class="grid" style="margin-top:18px">
+                <div class="card">
+                    <h2>Status pojazdu</h2>
+                    ${renderRow('Aktualizacja cockpit', escapeHtml(formatWarsawDate(cockpit.timestamp)))}
+                    ${renderRow('Lokalizacja', mapLink ? `<a target="_blank" rel="noopener noreferrer" href="${mapLink}">Pokaż na mapie</a>` : 'Brak danych', location.timestamp ? formatWarsawDate(location.timestamp) : null)}
+                    ${renderRow('Ciśnienie opon', pressure.available ? 'Dostępne' : `Niedostępne (HTTP ${escapeHtml(pressure.status ?? '—')})`)}
+                    ${renderRow('Cockpit API', `v${cockpit.cockpitVersion}`)}
+                </div>
+                <div class="card">
+                    <h2>Skrót konfiguracji</h2>
+                    ${renderRow('Silnik', escapeHtml(details.engineType || 'Brak danych'))}
+                    ${renderRow('Skrzynia', escapeHtml(details.gearbox?.label || 'Brak danych'))}
+                    ${renderRow('Napęd', escapeHtml(details.hybridation?.label || details.energy?.label || 'Brak danych'))}
+                    ${renderRow('Data produkcji', escapeHtml(details.manufacturingDate || 'Brak danych'))}
+                    ${renderRow('Aktywne umowy', String(activeContracts.length))}
+                </div>
+            </section>
+
+            <section class="card" style="margin-top:18px">
+                <h2>Dodatkowe sekcje</h2>
+                <a class="button secondary" href="/vehicle">Dane techniczne</a>
+                <a class="button secondary" href="/vehicle/images">Galeria auta</a>
+                <a class="button secondary" href="/vehicle/equipment">Kody wyposażenia</a>
+                <a class="button secondary" href="/vehicle/services">Usługi i gwarancje</a>
+                <a class="button light" href="/api/status">Status JSON</a>
+                <a class="button light" href="/api/vehicle-details">Surowe dane pojazdu</a>
+            </section>
+
+            <div class="warning">
+                Pole <strong>fuelQuantity</strong> nie wskazuje jednoznacznie, którego zbiornika dotyczy w aucie benzyna/LPG.
+            </div>
+        `, 'Dacia — przegląd'));
     } catch (error) {
-        console.error('');
-        console.error('BŁĄD:');
         console.error(error);
+        res.status(500).send(pageTemplate(`
+            <section class="card">
+                <h1 class="error">Błąd połączenia</h1>
+                <p>${escapeHtml(error.message)}</p>
+                <a class="button secondary" href="/">Spróbuj ponownie</a>
+            </section>
+        `, 'Błąd połączenia'));
+    }
+});
 
-        res.status(500).send(
-            pageTemplate(`
-                <h1 class="error">
-                    Błąd połączenia
-                </h1>
+app.get('/vehicle', async (req, res) => {
+    try {
+        const session = await createSession();
+        const details = getVehicleDetailsFromSession(session);
+        const vehicle = session.vehicle || {};
 
-                <p>
-                    ${escapeHtml(error.message)}
-                </p>
+        res.send(pageTemplate(`
+            <section class="hero">
+                <div class="subtitle">Dane przypisane do VIN-u</div>
+                <h1>${escapeHtml(details.brand?.label || vehicle.brand || '')} ${escapeHtml(details.model?.label || '')}</h1>
+                <p class="muted">Konfiguracja produkcyjna i dane techniczne zwracane przez Renault/Dacia.</p>
+            </section>
+            <section class="grid">
+                <div class="card">
+                    <h2>Napęd</h2>
+                    ${renderRow('Kod silnika', escapeHtml(details.engineType || 'Brak danych'))}
+                    ${renderRow('Dodatkowy typ silnika', escapeHtml(details.additionalEngineType?.label || details.additionalEngineType?.code || 'Brak danych'))}
+                    ${renderRow('Energia', escapeHtml(details.energy?.label || 'Brak danych'))}
+                    ${renderRow('Hybrydyzacja', escapeHtml(details.hybridation?.label || 'Brak danych'))}
+                    ${renderRow('Skrzynia', escapeHtml(details.gearbox?.label || 'Brak danych'))}
+                    ${renderRow('Akumulator', escapeHtml(details.battery?.label || 'Brak danych'))}
+                </div>
+                <div class="card">
+                    <h2>Model i nadwozie</h2>
+                    ${renderRow('Model', escapeHtml(details.model?.label || 'Brak danych'))}
+                    ${renderRow('Kod modelu', escapeHtml(details.model?.code || 'Brak danych'))}
+                    ${renderRow('Wersja', escapeHtml(details.version?.code || 'Brak danych'))}
+                    ${renderRow('Rodzina', escapeHtml(details.family?.label || details.family?.code || 'Brak danych'))}
+                    ${renderRow('Nadwozie', escapeHtml(details.bodyType?.label || 'Brak danych'))}
+                    ${renderRow('Kierownica', escapeHtml(details.steeringSide?.label || 'Brak danych'))}
+                </div>
+                <div class="card">
+                    <h2>Produkcja i własność</h2>
+                    ${renderRow('Data produkcji', escapeHtml(details.manufacturingDate || 'Brak danych'))}
+                    ${renderRow('Przekazanie do sprzedaży', escapeHtml(details.passToSalesDate || 'Brak danych'))}
+                    ${renderRow('Data dostawy', escapeHtml(details.deliveryDate || 'Brak danych'))}
+                    ${renderRow('Kraj dostawy', escapeHtml(details.deliveryCountry?.label || 'Brak danych'))}
+                    ${renderRow('Początek własności', escapeHtml(vehicle.ownershipStartDate || 'Brak danych'))}
+                    ${renderRow('Rola', escapeHtml(vehicle.connectedDriver?.role || 'Brak danych'))}
+                </div>
+                <div class="card">
+                    <h2>Łączność i multimedia</h2>
+                    ${renderRow('TCU', escapeHtml(details.tcu?.label || 'Brak danych'))}
+                    ${renderRow('Radio', escapeHtml(details.radioType?.label || 'Brak danych'))}
+                    ${renderRow('Technologia łączności', escapeHtml(details.connectivityTechnology || 'Brak danych'))}
+                    ${renderRow('Easy Connect Store', details.easyConnectStore ? 'Tak' : 'Nie')}
+                    ${renderRow('Premium', details.premiumSubscribed ? 'Aktywne' : 'Nieaktywne')}
+                    ${renderRow('Lata obsługi', details.yearsOfMaintenance ?? 'Brak danych')}
+                </div>
+            </section>
+        `, 'Dane techniczne auta'));
+    } catch (error) {
+        res.status(500).send(pageTemplate(`<section class="card"><h1 class="error">Błąd</h1><p>${escapeHtml(error.message)}</p></section>`));
+    }
+});
 
-                <a
-                    class="button secondary"
-                    href="/"
-                >
-                    Spróbuj ponownie
-                </a>
-            `)
-        );
+app.get('/vehicle/images', async (req, res) => {
+    try {
+        const session = await createSession();
+        const details = getVehicleDetailsFromSession(session);
+        const images = getVehicleImages(details);
+
+        const gallery = images.length
+            ? images.map((image) => `
+                <figure>
+                    <a href="${escapeHtml(image.largeUrl)}" target="_blank" rel="noopener noreferrer">
+                        <img loading="lazy" src="${escapeHtml(image.smallUrl)}" alt="${escapeHtml(image.viewpoint)}">
+                    </a>
+                    <figcaption>${escapeHtml(image.viewpoint)} · <a target="_blank" rel="noopener noreferrer" href="${escapeHtml(image.largeUrl)}">duża wersja</a></figcaption>
+                </figure>
+            `).join('')
+            : '<div class="info">Brak grafik pojazdu.</div>';
+
+        res.send(pageTemplate(`
+            <section class="hero"><h1>Galeria pojazdu</h1><p class="muted">Rendery 3D wygenerowane przez serwis Renault dla konfiguracji tego auta.</p></section>
+            <section class="gallery">${gallery}</section>
+        `, 'Galeria pojazdu'));
+    } catch (error) {
+        res.status(500).send(pageTemplate(`<section class="card"><h1 class="error">Błąd</h1><p>${escapeHtml(error.message)}</p></section>`));
+    }
+});
+
+app.get('/vehicle/equipment', async (req, res) => {
+    try {
+        const session = await createSession();
+        const details = getVehicleDetailsFromSession(session);
+        const codes = getVcdCodes(details);
+
+        res.send(pageTemplate(`
+            <section class="hero">
+                <h1>Kody wyposażenia</h1>
+                <p class="muted">Fabryczny ciąg VCD zawiera ${codes.length} kodów konfiguracji. Nie wszystkie mają publicznie dostępne opisy.</p>
+            </section>
+            <section class="card">
+                <h2>Najważniejsze rozpoznane parametry</h2>
+                ${renderRow('Model', escapeHtml(details.model?.label || 'Brak danych'))}
+                ${renderRow('Skrzynia', escapeHtml(details.gearbox?.label || 'Brak danych'))}
+                ${renderRow('Radio', escapeHtml(details.radioType?.label || 'Brak danych'))}
+                ${renderRow('TCU', escapeHtml(details.tcu?.label || 'Brak danych'))}
+                ${renderRow('Hybrydyzacja', escapeHtml(details.hybridation?.label || 'Brak danych'))}
+            </section>
+            <section class="card" style="margin-top:18px">
+                <h2>Pełna lista VCD</h2>
+                <div class="chips">${codes.map((code) => `<span class="chip">${escapeHtml(code)}</span>`).join('')}</div>
+            </section>
+        `, 'Wyposażenie pojazdu'));
+    } catch (error) {
+        res.status(500).send(pageTemplate(`<section class="card"><h1 class="error">Błąd</h1><p>${escapeHtml(error.message)}</p></section>`));
+    }
+});
+
+app.get('/vehicle/services', async (req, res) => {
+    try {
+        const session = await createSession();
+        const contracts = await getContracts(session.accountId, session.jwtToken);
+        const details = getVehicleDetailsFromSession(session);
+
+        const contractsHtml = contracts.length
+            ? contracts.map((contract) => `
+                <div class="contract">
+                    <strong>${escapeHtml(contract.description || contract.type || 'Umowa')}</strong>
+                    <div class="muted">Status: ${escapeHtml(contract.status || 'brak')} ${contract.startDate ? `· od ${escapeHtml(contract.startDate)}` : ''} ${contract.endDate ? `· do ${escapeHtml(contract.endDate)}` : ''}</div>
+                </div>
+            `).join('')
+            : '<div class="info">Brak umów zwróconych przez API.</div>';
+
+        res.send(pageTemplate(`
+            <section class="hero"><h1>Usługi, gwarancje i serwis</h1><p class="muted">Dane kontraktów oraz dostępne pola serwisowe.</p></section>
+            <section class="grid">
+                <div class="card">
+                    <h2>Informacje serwisowe</h2>
+                    ${renderRow('Lata obsługi', details.yearsOfMaintenance ?? 'Brak danych')}
+                    ${renderRow('Cyfrowa książka serwisowa', escapeHtml(session.vehicle?.digitalMaintenanceBookletGenerationDate || 'Brak danych'))}
+                    ${renderRow('Akcje przywoławcze', details.recallNotifications ? 'Dostępne' : 'Brak danych')}
+                    ${renderRow('Preferowany dealer', escapeHtml(details.preferredDealer?.name || 'Brak danych'))}
+                </div>
+                <div class="card"><h2>Umowy i gwarancje</h2>${contractsHtml}</div>
+            </section>
+        `, 'Usługi i gwarancje'));
+    } catch (error) {
+        res.status(500).send(pageTemplate(`<section class="card"><h1 class="error">Błąd</h1><p>${escapeHtml(error.message)}</p></section>`));
     }
 });
 
@@ -2051,7 +2004,10 @@ app.get('/debug', (req, res) => {
                 `http://localhost:${PORT}/api/test/cockpit`,
 
             pressure:
-                `http://localhost:${PORT}/api/pressure`
+                `http://localhost:${PORT}/api/pressure`,
+
+            vehicleDetails:
+                `http://localhost:${PORT}/api/vehicle-details`
         }
     });
 });
@@ -2073,6 +2029,15 @@ app.use((req, res) => {
             '/api/raw/cockpit',
             '/api/test/cockpit',
             '/api/pressure',
+            '/api/vehicle-details',
+            '/api/test/extra',
+            '/api/alerts',
+            '/api/lock-status',
+            '/api/hvac-status',
+            '/vehicle',
+            '/vehicle/images',
+            '/vehicle/equipment',
+            '/vehicle/services',
             '/debug'
         ]
     });
