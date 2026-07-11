@@ -1,65 +1,65 @@
 # Dacia Data Collector
 
-Nieoficjalna aplikacja Node.js pobierająca dane pojazdu z usług Dacia/Renault i wysyłająca dzienny raport JSON przez Gmail.
+An unofficial Node.js application that retrieves vehicle data from Dacia/Renault services and can send a daily JSON report by email.
 
-> Projekt korzysta z nieudokumentowanych endpointów producenta. Nie jest powiązany z Renault Group, Dacia, Home Assistant ani Google.
+> This project uses undocumented manufacturer endpoints. It is not affiliated with, endorsed by, or supported by Renault Group, Dacia, Home Assistant, Google, or GitHub.
 
-## Funkcje
+## Features
 
-- logowanie do konta My Dacia przez Gigya,
-- wyszukiwanie pojazdu po VIN,
-- pobieranie przebiegu, ilości paliwa i lokalizacji,
-- szacowanie zasięgu benzyny oraz LPG,
-- endpoint HTTP z aktualnym statusem,
-- wysyłka raportu JSON e-mailem,
-- aktualizacja konfiguracji klienta Renault/Dacia z projektu społecznościowego `hacf-fr/renault-api`,
-- podstawowa diagnostyka instalacji.
+- signs in to a My Dacia account through Gigya,
+- finds a configured vehicle by VIN,
+- retrieves mileage, fuel quantity, and vehicle location,
+- estimates petrol and LPG range,
+- exposes the current vehicle status through an HTTP API,
+- sends a JSON report by email,
+- updates Renault/Dacia client configuration from the community-maintained `hacf-fr/renault-api` project,
+- provides basic installation and endpoint diagnostics.
 
-## Wymagania
+## Requirements
 
-- Node.js 18 lub nowszy,
-- konto My Dacia z przypisanym pojazdem,
-- opcjonalnie Gmail z weryfikacją dwuetapową i hasłem aplikacji.
+- Node.js 18 or newer,
+- a My Dacia account with a vehicle assigned to it,
+- optionally, a Gmail account with two-step verification and an app password.
 
-## Instalacja
+## Installation
 
 ```bash
-git clone https://github.com/TWOJ_LOGIN/dacia-data-collector.git
+git clone https://github.com/peha68/dacia-data-collector.git
 cd dacia-data-collector
 npm ci
 cp .env.example .env
 ```
 
-Uzupełnij w `.env` co najmniej:
+At minimum, configure the following values in `.env`:
 
 ```env
-DACIA_EMAIL=twoj_email@example.com
-DACIA_PASSWORD=twoje_haslo
-CAR_VIN=VIN_POJAZDU
+DACIA_EMAIL=your_email@example.com
+DACIA_PASSWORD=your_password
+CAR_VIN=YOUR_VEHICLE_VIN
 COUNTRY_CODE=PL
 ```
 
-Pliku `.env` nigdy nie dodawaj do repozytorium.
+Never commit the `.env` file to the repository.
 
-## Konfiguracja Renault/Dacia
+## Renault/Dacia client configuration
 
-Projekt zawiera zweryfikowaną konfigurację klienta w:
+The project includes a verified client configuration file at:
 
 ```text
 config/renault-client.json
 ```
 
-Wartości pochodzą ze społecznościowego projektu open source `hacf-fr/renault-api`. Nie jest to oficjalne repozytorium Renault ani Dacii.
+The values are based on the community-maintained open-source project `hacf-fr/renault-api`. This is not an official Renault or Dacia repository.
 
-Aby odświeżyć konfigurację:
+To refresh the client configuration, run:
 
 ```bash
 npm run update-config
 ```
 
-Polecenie pobiera plik `const.py`, odczytuje europejskie wartości Gigya i Kamereon, sprawdza ich format i zapisuje lokalną kopię. Aplikacja nie pobiera konfiguracji przy każdym uruchomieniu, więc awaria GitHuba nie zatrzyma działającej instalacji.
+The command downloads `const.py`, extracts the European Gigya and Kamereon values, validates their format, and saves a local copy. The application does not download this configuration on every startup, so an unavailable GitHub source will not stop an already configured installation from working.
 
-Zmienne `.env` mają pierwszeństwo i pozwalają nadpisać lokalną konfigurację:
+Environment variables have priority over the local configuration and can be used to override it:
 
 ```env
 GIGYA_API_KEY=
@@ -68,85 +68,121 @@ GIGYA_TARGET=
 KAMEREON_TARGET=
 ```
 
-Zwykle należy pozostawić je puste.
+In most installations, these values should be left empty.
 
-## Diagnostyka
+## Diagnostics
+
+Run:
 
 ```bash
 npm run doctor
 ```
 
-Sprawdza obecność podstawowych zmiennych, format konfiguracji oraz dostępność endpointów. Nie wysyła hasła ani danych pojazdu do GitHuba.
+This checks the required environment variables, configuration format, and endpoint availability. It does not send your password or vehicle data to GitHub.
 
-Pełny test:
+For a complete account and vehicle test, start the server:
 
 ```bash
 npm start
+```
+
+Then, in another terminal:
+
+```bash
 curl http://127.0.0.1:3000/api/status
 ```
 
-## Wysyłka raportu
+## Available HTTP endpoints
 
-Uzupełnij:
+Depending on the vehicle model and enabled connected services, the application may expose endpoints such as:
+
+```text
+GET  /api/status
+GET  /api/raw/cockpit
+GET  /api/test/cockpit
+GET  /api/test/extra
+GET  /api/location
+GET  /api/pressure
+GET  /api/alerts
+GET  /api/lock-status
+GET  /api/hvac-status
+POST /api/actions/horn
+POST /api/actions/lights
+```
+
+Not every vehicle supports every endpoint. A `403` or `404` response may simply mean that the feature is not available for the vehicle, account, country, or connected-services package.
+
+The `horn` and `lights` routes perform real remote vehicle actions. Use them carefully and only on a vehicle you own or are authorized to control.
+
+## Sending a report
+
+Configure:
 
 ```env
-GMAIL_USER=twoj_email@gmail.com
-GMAIL_APP_PASSWORD=haslo_aplikacji_google
-REPORT_RECIPIENT=odbiorca@example.com
+GMAIL_USER=your_email@gmail.com
+GMAIL_APP_PASSWORD=your_google_app_password
+REPORT_RECIPIENT=recipient@example.com
 DACIA_APP_URL=http://127.0.0.1:3000/api/status
 ```
 
-Następnie:
+Then run:
 
 ```bash
 npm run report
 ```
 
-Przykład cron codziennie o 23:59:
+Example cron entry for sending a report every day at 23:59:
 
 ```cron
 59 23 * * * cd /opt/dacia-data-collector && /usr/bin/node collect-and-send.js >> /var/log/dacia-report.log 2>&1
 ```
 
-## Skrypty npm
+## npm scripts
 
-| Polecenie | Działanie |
+| Command | Description |
 |---|---|
-| `npm start` | uruchamia serwer |
-| `npm run report` | wysyła jednorazowy raport |
-| `npm run doctor` | sprawdza instalację |
-| `npm run update-config` | odświeża konfigurację Renault/Dacia |
-| `npm run check` | sprawdza składnię wszystkich plików JS |
+| `npm start` | Starts the HTTP server |
+| `npm run report` | Sends a one-time email report |
+| `npm run doctor` | Checks the installation and configuration |
+| `npm run update-config` | Refreshes the Renault/Dacia client configuration |
+| `npm run check` | Checks the syntax of all JavaScript files |
 
-## Bezpieczeństwo
+## Security
 
-Nie publikuj:
+Never publish or commit:
 
 - `.env`,
-- loginu i hasła My Dacia,
-- hasła aplikacji Gmail,
-- tokenów sesyjnych i JWT,
-- VIN-u, `personId` i identyfikatorów kont,
-- danych lokalizacji i logów produkcyjnych.
+- My Dacia email addresses or passwords,
+- Gmail app passwords,
+- session tokens or JWTs,
+- VINs, `personId` values, or account identifiers,
+- vehicle location data,
+- production logs containing personal or vehicle data.
 
-Przed publikacją uruchom:
+Before publishing changes, run:
 
 ```bash
 git status --ignored
 git grep -nE 'DACIA_PASSWORD|GMAIL_APP_PASSWORD|x-gigya-id_token|Bearer '
 ```
 
-## Pochodzenie konfiguracji klienta
+Also read [SECURITY.md](SECURITY.md).
 
-Klucze Gigya i Kamereon są identyfikatorami klienta używanymi do rozpoczęcia przepływu logowania. Nie są hasłem użytkownika ani tokenem sesji. Projekt odświeża je z aktualnej wersji społecznościowej biblioteki `hacf-fr/renault-api`. Źródło może zmienić strukturę lub przestać być utrzymywane, dlatego aktualizacja jest ręczna, walidowana i zapisywana lokalnie.
+## Client configuration source
 
-## Ograniczenia
+Gigya and Kamereon API keys are application client identifiers used to begin the authentication flow. They are not user passwords or session tokens.
 
-- API jest nieoficjalne i może zmienić się bez zapowiedzi.
-- Dane pojazdu mogą być opóźnione.
-- Nie wszystkie modele obsługują wszystkie endpointy.
-- `fuelQuantity` może nie rozróżniać benzyny i LPG.
+The project can refresh these values from the current version of the community-maintained `hacf-fr/renault-api` library. That external source may change structure or stop being maintained, so updates are manual, validated, and saved locally.
 
-## Licencja
+## Limitations
 
-MIT. Zobacz [LICENSE](LICENSE).
+- The API is unofficial and may change without notice.
+- Vehicle data may be delayed or cached.
+- Not every vehicle supports every endpoint.
+- Some active endpoints require specific vehicle hardware or connected-services subscriptions.
+- `fuelQuantity` may not distinguish petrol from LPG.
+- Remote actions may be unavailable even when read-only telemetry works.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
